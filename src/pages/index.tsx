@@ -22,6 +22,12 @@ export const getServerSideProps: GetServerSideProps<IHomeProps> = async () => {
 }
 
 export default function Home({ recommendedProducts }: IHomeProps) {
+  async function handleSum() {
+    const { sum } = (await import('../lib/math')).default;
+
+    alert(sum(3, 8));
+  }
+
   return (
     <div>
       <section>
@@ -37,6 +43,7 @@ export default function Home({ recommendedProducts }: IHomeProps) {
           })}
         </ul>
       </section>
+      <button onClick={handleSum}>Sum!</button>
     </div>
   )
 }
