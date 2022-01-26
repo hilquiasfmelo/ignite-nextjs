@@ -1,0 +1,70 @@
+import { GetStaticPaths, GetStaticProps } from 'next';
+import { useRouter } from 'next/router';
+
+interface IProducts {
+  id: string;
+  title: string;
+}
+
+interface CategoryProps {
+  products: IProducts[];
+}
+
+type Params = {
+  slug: string;
+}
+
+export default function Category({ products }: CategoryProps) {
+  const router = useRouter();
+
+  if (router.isFallback) {
+    return <p>Carregando...</p>
+  }
+
+  return (
+    <div>
+      <h1>{router.query.slug}</h1>
+
+      <ul>
+        {products.map(products => {
+          return (
+            <li key={products.id}>
+              {products.title}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const response = await fetch(`http://localhost:3333/categories`);
+  const categories: IProducts[] = await response.json();
+
+  const paths = categories.map(category => {
+    return {
+      params: { slug: category.id }
+    }
+  })
+
+  return {
+    paths,
+    fallback: true,
+  }
+}
+
+export const getStaticProps: GetStaticProps<CategoryProps> = async (context) => {
+  const { slug } = context.params as Params;
+
+  const response = await fetch(`http://localhost:3333/products?category_id=${slug}`);
+  const products = await response.json();
+
+  return {
+    props: {
+      products,
+    },
+    revalidate: 60,
+  }
+}
+
