@@ -1,38 +1,23 @@
 import type { GetServerSideProps } from 'next'
-import { Title } from '@/styles/pages/Home'
+import Prismic from 'prismic-javascript';
+import PrismicDOM from 'prismic-dom';
+import Link from 'next/link';
+import { Document } from 'prismic-javascript/types/documents';
+import { client } from '@/lib/prismic';
+
 import SEO from '@/components/SEO';
 
-interface IProducts {
-  id: string;
-  title: string;
-}
+import { Title } from '@/styles/pages/Home'
 
 interface IHomeProps {
-  recommendedProducts: IProducts[];
-}
-
-export const getServerSideProps: GetServerSideProps<IHomeProps> = async () => {
-  const response = await fetch('http://localhost:3333/recommended');
-  const recommendedProducts = await response.json();
-
-  return {
-    props: {
-      recommendedProducts
-    }
-  }
+  recommendedProducts: Document[];
 }
 
 export default function Home({ recommendedProducts }: IHomeProps) {
-  async function handleSum() {
-    const { sum } = (await import('../lib/math')).default;
-
-    alert(sum(3, 8));
-  }
-
   return (
     <div>
       <SEO
-        title='Dev Hilquias'
+        title='DevCommerce, your best e-commerce!'
         image="boost.png"
         shouldExcludeTitleSuffix
       />
@@ -43,13 +28,28 @@ export default function Home({ recommendedProducts }: IHomeProps) {
           {recommendedProducts.map(recommendedProduct => {
             return (
               <li key={recommendedProduct.id}>
-                {recommendedProduct.title}
+                <Link href={`/products/${recommendedProduct.uid}`}>
+                  <a>
+                    {PrismicDOM.RichText.asText(recommendedProduct.data.title)}
+                  </a>
+                </Link>
               </li>
             )
           })}
         </ul>
       </section>
-      <button onClick={handleSum}>Sum!</button>
     </div>
   )
+}
+
+export const getServerSideProps: GetServerSideProps<IHomeProps> = async () => {
+  const recommendedProducts = await client().query([
+    Prismic.Predicates.at('document.type', 'product')
+  ]);
+
+  return {
+    props: {
+      recommendedProducts: recommendedProducts.results
+    }
+  }
 }
