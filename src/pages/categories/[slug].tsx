@@ -1,20 +1,22 @@
-import { GetStaticPaths, GetStaticProps } from 'next';
+import Prismic from 'prismic-javascript';
+import PrismicDOM from 'prismic-dom';
+import { client } from '@/lib/prismic';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
+import { GetStaticPaths, GetStaticProps } from 'next';
+import { Document } from 'prismic-javascript/types/documents';
 
-interface IProducts {
-  id: string;
-  title: string;
-}
 
 interface CategoryProps {
-  products: IProducts[];
+  category: Document;
+  products: Document[];
 }
 
 type Params = {
   slug: string;
 }
 
-export default function Category({ products }: CategoryProps) {
+export default function Category({ products, category }: CategoryProps) {
   const router = useRouter();
 
   if (router.isFallback) {
@@ -23,13 +25,19 @@ export default function Category({ products }: CategoryProps) {
 
   return (
     <div>
-      <h1>{router.query.slug}</h1>
+      <h1>
+        {PrismicDOM.RichText.asText(category.data.title)}
+      </h1>
 
       <ul>
-        {products.map(products => {
+        {products.map(product => {
           return (
-            <li key={products.id}>
-              {products.title}
+            <li key={product.id}>
+              <Link href={`/products/${product.uid}`}>
+                <a>
+                  {PrismicDOM.RichText.asText(product.data.title)}
+                </a>
+              </Link>
             </li>
           )
         })}
@@ -39,12 +47,13 @@ export default function Category({ products }: CategoryProps) {
 }
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  const response = await fetch(`http://localhost:3333/categories`);
-  const categories: IProducts[] = await response.json();
+  const categories = await client().query([
+    Prismic.Predicates.at('document.type', 'category'),
+  ])
 
-  const paths = categories.map(category => {
+  const paths = categories.results.map(category => {
     return {
-      params: { slug: category.id }
+      params: { slug: category.uid }
     }
   })
 
@@ -57,12 +66,17 @@ export const getStaticPaths: GetStaticPaths = async () => {
 export const getStaticProps: GetStaticProps<CategoryProps> = async (context) => {
   const { slug } = context.params as Params;
 
-  const response = await fetch(`http://localhost:3333/products?category_id=${slug}`);
-  const products = await response.json();
+  const category = await client().getByUID('category', slug, {});
+
+  const products = await client().query([
+    Prismic.Predicates.at('document.type', 'product'),
+    Prismic.Predicates.at('my.product.category', category.id)
+  ]);
 
   return {
     props: {
-      products,
+      category,
+      products: products.results,
     },
     revalidate: 60,
   }
